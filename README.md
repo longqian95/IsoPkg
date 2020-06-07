@@ -2,9 +2,13 @@
 
 Environment-isolated package manager
 
-Manage packages by ensuring every direct installed package has its own isolated environment. Therefore, the direct installed packages will never conflict with each others. If updating a package, it can always upgrade to the newest version. Even same package with different versions can be installed all together.
+*No more package version conflicts. Keep every package the newest version.*
 
-This package simply create `env_isolated_packages` folder in `~/.julia`. Then create a group folder (default is Julia version) for every group of packages. Installing package will create an isolated environment in the activated group folder. Before operating or loading a package, the corresponding environment will be activated automatically. The whole process is quite lightweight. You can just manage `~/.julia/env_isolated_packages` manually.
+Manage packages by creating its own isolated project environment for every direct installed package. The direct installed packages will never conflict with each others. If updating a package, it can always be upgraded to the newest version. Even same package with different versions can be installed all together.
+
+*For example:* If `]add UnicodePlots@1.2.0 StatsBase@0.33.0`, then it will return `ERROR: Unsatisfiable requirements detected for package StatsBase [2913bbd2]` because of the version restrictions of package dependencies. With `IsoPkg`, simplely `using IsoPkg; IsoPkg.add("UnicodePlots@1.2.0"); IsoPkg.add("StatsBase@0.33.0");`, then both packages can be used together: `@iso using UnicodePlots "1.2.0"; @iso using StatsBase "0.33.0"`
+
+*Implementation details:* This package simply create `env_isolated_packages` folder in `~/.julia`. Then create a folder (default is Julia version) for grouping each group of packages. Installing package will create an isolated environment in the activated group folder. Before operating or loading a package, the corresponding environment will be activated automatically. The whole process is quite lightweight. You can just manage the folders in `~/.julia/env_isolated_packages` manually to manage the packages.
 
 # Installation
 
@@ -26,12 +30,22 @@ This package simply create `env_isolated_packages` folder in `~/.julia`. Then cr
 
 # Examples
 
-    IsoPkg.add("Glob") #install Glob
-    IsoPkg.add("Glob@1.2.0") #install Glob v1.2.0
-    @iso using Glob #load Glob
-    @iso using Glob "1.2.0" #load Glob v1.2.0
-    using Pkg; @iso "Glob1" pkg"add Glob@1.3.0" #add Glob v1.3.0 with name Glob1
-    @iso "Glob1" using Glob #load Glob v1.3.0
-    IsoPkg.status() #show status
-    IsoPkg.update() #update
-    IsoPkg.rm("Glob1") #remove Glob v1.3.0
+```julia
+using IsoPkg
+
+IsoPkg.switch("test") #switch current project group to "test"
+
+IsoPkg.add("Glob") #install Glob
+IsoPkg.add("Glob@1.2.0") #install Glob v1.2.0 and pin the version
+
+@iso using Glob #load Glob
+@iso using Glob "1.2.0" #load Glob v1.2.0
+
+using Pkg;@iso "Glob1" pkg"add Glob@1.3.0" #add Glob v1.3.0 as name Glob1
+@iso "Glob1" using Glob #load Glob v1.3.0
+
+IsoPkg.status() #show status
+IsoPkg.update() #update all packages
+
+IsoPkg.rm("Glob1") #remove Glob v1.3.0
+```

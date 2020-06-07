@@ -4,8 +4,10 @@ using Pkg
 
 export @iso
 
-"""package group name"""
-const GROUP=Ref(string("v",VERSION.major,".",VERSION.minor))
+const DEFAULT_GROUP=string("v",VERSION.major,".",VERSION.minor)
+
+"""Name of current package group"""
+const GROUP=Ref(DEFAULT_GROUP)
 
 function env_path()
     depots=Pkg.depots1()
@@ -17,10 +19,11 @@ end
 
 """
     switch(group_name::String)
+    switch()
 
-Switch the current package group to `group_name`.
+Switch the current package group to `group_name` or to the default group name(Julia version).
 """
-function switch(group_name::String)
+function switch(group_name::String=DEFAULT_GROUP)
     if group_name==""
         error("invalid group name")
     else 
@@ -29,6 +32,7 @@ function switch(group_name::String)
     return nothing
 end
 
+#Search if pkg exists in registry
 function search_registry(pkg::AbstractString)
     for registry in Pkg.Types.collect_registries()
         data = Pkg.Types.read_registry(joinpath(registry.path, "Registry.toml"))
@@ -52,6 +56,7 @@ function str2spec(pkg::String)
     return (name=name,ver=ver,spec=p)
 end
 
+#Search if pkg installed. If installed, return the detailed information, otherwise raise error.
 function search_pkg(pkg::String)
     name,ver=str2spec(pkg)
     found=String[]
@@ -89,6 +94,20 @@ end
 Load package or run `statement` in the specified package environment.
 
 Currently it does not support multiple package loading.
+
+# Examples
+
+    #Load Glob
+    @iso using Glob
+
+    #Load UnicodePlots v1.2.0 (after IsoPkg.add("UnicodePlots@1.2.0"))
+    @iso using UnicodePlots "1.2.0"
+
+    #Pin Glob version
+    @iso "Glob" Pkg.pin("Glob")
+
+    #Show Glob status (equivalent to IsoPkg.status("Glob"))
+    @iso "Glob" pkg"status --manifest"
 """
 macro iso(expr1,expr2="")
     if typeof(expr1)==Expr && (expr1.head==:import || expr1.head==:using)
@@ -138,7 +157,15 @@ end
 
 Install a package.
 
-If `pkg` is "name@ver" form, then add it and pin the version. If want to free it, just use `IsoPkg.rm(name); IsoPkg.add(name)`. Because the `pkg` is in fact just an environment, these operations are quite lightweight. `@iso name pkg"free name"` can also free it and is not recommended because the environment name and the package name will not match after package updating.
+If `pkg` is in the "name@ver" form, then add it and pin the version. If want to free it, just use `IsoPkg.rm(name); IsoPkg.add(name)`. Because the `pkg` is in fact just an environment, these operations are quite lightweight. `@iso name pkg"free name"` can also be used to free it. This way is not recommended because the "ver" in package name may not match the real package version after package updating.
+
+# Examples
+
+    #install Glob
+    IsoPkg.add("Glob")
+
+    #install Glob v1.2.0 and pin the version
+    IsoPkg.add("Glob@1.2.0")
 """
 function add(pkg::AbstractString)
     name,ver,spec=str2spec(pkg)
@@ -153,7 +180,7 @@ end
 """
     rm(pkg::AbstractString)
 
-Remove package
+Remove a package.
 """
 function rm(pkg::AbstractString)
     Base.rm(search_pkg(pkg).path; recursive=true)
@@ -164,7 +191,7 @@ end
     update()
     update(pkg::AbstractString)
 
-Upgrade the specified package or all installed packages
+Upgrade a package or all installed packages.
 """
 function update()
     for pkg in readdir(env_path())
@@ -178,6 +205,7 @@ function update(pkg::AbstractString)
     return nothing
 end
 
+#Get detailed information of pkg according to Project.toml and Manifest.toml
 function pkg_info(pkg::AbstractString)
     path=joinpath(env_path(),pkg)
     name=uuid=ver=""
@@ -201,7 +229,7 @@ end
     status()
     status(pkg::AbstractString)
 
-Show the status of the specified package or all installed packages
+Show the status of a package or all installed packages.
 """
 function status()
     for pkg in readdir(env_path())
@@ -225,5 +253,20 @@ function status(pkg::AbstractString)
     return nothing
 end
 
+function test()
+    @eval begin
+        IsoPkg.switch("test") #switch current project group to "test"
+        IsoPkg.add("Glob") #install Glob
+        IsoPkg.add("Glob@1.2.0") #install Glob v1.2.0 and pin the version
+        @iso using Glob #load Glob
+        @iso using Glob "1.2.0" #load Glob v1.2.0
+        @iso "Glob1" pkg"add Glob@1.3.0" #add Glob v1.3.0 as name Glob1
+        @iso "Glob1" using Glob #load Glob v1.3.0
+        IsoPkg.status() #show status
+        IsoPkg.update() #update all packages
+        IsoPkg.rm("Glob1") #remove Glob v1.3.0
+        IsoPkg.switch()
+    end
+end
 
 end
