@@ -4,7 +4,7 @@ Environment-isolated package manager
 
 Manage packages by ensuring every direct installed package has its own isolated environment. Therefore, the direct installed packages will never conflict with each others. If updating a package, it can always upgrade to the newest version. Even same package with different versions can be installed all together.
 
-This package simply create "env_isolated_packages" folder in "~/.julia". Then create a group folder (default is Julia version) for every group of packages. Installing package will create an isolated environment in the activated group folder. Before operating or loading a package, the corresponding environment will be activated automatically. The whole process is quite lightweight. You can just manage "~/.julia/env_isolated_packages" manually.
+This package simply create `env_isolated_packages` folder in `~/.julia`. Then create a group folder (default is Julia version) for every group of packages. Installing package will create an isolated environment in the activated group folder. Before operating or loading a package, the corresponding environment will be activated automatically. The whole process is quite lightweight. You can just manage `~/.julia/env_isolated_packages` manually.
 
 # Installation
 
