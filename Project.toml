@@ -1,0 +1,7 @@
+name = "IsoPkg"
+uuid = "e83058a5-5d84-4d47-98c5-f4cddc4c1074"
+authors = ["longqian95 <longqian95@gmail.com>"]
+version = "0.2.0"
+
+[deps]
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
