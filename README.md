@@ -10,7 +10,7 @@ Manage packages by creating its own isolated project environment for every direc
 
 If `]add UnicodePlots@1.2.0 StatsBase@0.33.0` in Julia v1.4, then it will return `ERROR: Unsatisfiable requirements detected for package StatsBase [2913bbd2]` because of the version restrictions of package dependencies (see [1], [2]).
 
-With `IsoPkg`, simplely `using IsoPkg; IsoPkg.add("UnicodePlots@1.2.0"); IsoPkg.add("StatsBase@0.33.0")`, then both packages can be used together: `@iso using UnicodePlots "1.2.0"; @iso using StatsBase "0.33.0"`
+With `IsoPkg`, simplely `using IsoPkg; IsoPkg.add("UnicodePlots@1.2.0"); IsoPkg.add("StatsBase@0.33.0")`, then both packages can be used together: `@iso using UnicodePlots "1.2.0"; @iso using StatsBase "0.33.0"` (Notice: this will bypass the version compatibility check)
 
 ## Implementation detail:
 
@@ -48,6 +48,7 @@ IsoPkg.switch("test") #switch current project group to "test"
 IsoPkg.add("Glob") #install Glob
 IsoPkg.add("Glob@1.2.0") #install Glob v1.2.0 and pin the version
 
+#Notice: if the following `using` statements are in a same session, only the first one do the real loading
 @iso using Glob #load Glob
 @iso using Glob "1.2.0" #load Glob v1.2.0
 
