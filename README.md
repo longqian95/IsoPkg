@@ -2,7 +2,7 @@
 
 Environment-isolated package manager
 
-**No more package version conflicts. Keep every package the newest version.**
+**No more package version conflicts. Easily upgrade packages to the newest version. Make scripts keep working.**
 
 Manage packages by creating its own isolated project environment for every direct installed package. The direct installed packages will never conflict with each others. If updating a package, it can always be upgraded to the newest version. Even same package with different versions can be installed all together.
 
@@ -10,7 +10,7 @@ Manage packages by creating its own isolated project environment for every direc
 
 If `]add UnicodePlots@1.2.0 StatsBase@0.33.0` in Julia v1.4, then it will return `ERROR: Unsatisfiable requirements detected for package StatsBase [2913bbd2]` because of the version restrictions of package dependencies (see [1], [2]).
 
-With `IsoPkg`, simplely `using IsoPkg; IsoPkg.add("UnicodePlots@1.2.0"); IsoPkg.add("StatsBase@0.33.0")`, then both packages can be used together: `@iso using UnicodePlots "1.2.0"; @iso using StatsBase "0.33.0"` (Notice: this will bypass the version compatibility check)
+With `IsoPkg`, simplely `using IsoPkg; IsoPkg.add("UnicodePlots@1.2.0"); IsoPkg.add("StatsBase@0.33.0")`, then both packages can be used together: `@iso using UnicodePlots "1.2.0"; @iso using StatsBase "0.33.0"` (Notice: this will bypass the version compatibility check). Foremore, the script using UnicodePlots or StatsBase as this form will always work without worrying about the package upgrading.
 
 ## Implementation detail:
 
