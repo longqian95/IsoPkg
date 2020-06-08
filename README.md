@@ -48,7 +48,7 @@ IsoPkg.switch("test") #switch current project group to "test"
 IsoPkg.add("Glob") #install Glob
 IsoPkg.add("Glob@1.2.0") #install Glob v1.2.0 and pin the version
 
-#Notice: if the following `using` statements are in a same session, only the first one do the real loading
+#Notice: if the following `using` statements are in the same session, only the first one do the real loading
 @iso using Glob #load Glob
 @iso using Glob "1.2.0" #load Glob v1.2.0
 
