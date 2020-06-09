@@ -341,24 +341,4 @@ function free(pkg::AbstractString)
     return nothing
 end
 
-function test()
-    @eval begin
-        IsoPkg.switch("test") #switch current project group to "test"
-        IsoPkg.add("Glob") #install Glob
-        IsoPkg.add("Glob@1.2.0") #install Glob v1.2.0 and pin the version
-        @iso using Glob #load Glob
-        @iso using Glob "1.2.0" #load Glob v1.2.0
-        @iso "Glob1" pkg"add Glob@1.3.0" #add Glob v1.3.0 as name Glob1
-        @iso "Glob1" using Glob #load Glob v1.3.0
-        IsoPkg.status() #show status
-        IsoPkg.update() #update all packages
-        IsoPkg.pin("Glob1")
-        IsoPkg.free("Glob1")
-        IsoPkg.pin("Glob")
-        IsoPkg.free("Glob@1.2.0")
-        IsoPkg.rm("Glob1") #remove Glob v1.3.0
-        IsoPkg.switch()
-    end
-end
-
 end
