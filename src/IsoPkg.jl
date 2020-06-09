@@ -48,7 +48,8 @@ end
 function str2spec(pkg::String)
     if '@' in pkg
         name,ver=string.(split(pkg,'@'))
-        p=Pkg.PackageSpec(name=name,version=VersionNumber(ver))
+        ver=string(VersionNumber(ver))
+        p=Pkg.PackageSpec(name=name,version=ver)
     else
         name,ver=pkg,""
         p=Pkg.PackageSpec(name=pkg)
@@ -56,7 +57,7 @@ function str2spec(pkg::String)
     return (name=name,ver=ver,spec=p)
 end
 
-#Search if pkg installed. If installed, return the detailed information, otherwise raise error.
+#Search if pkg installed. If installed, return (pkg,name,ver,path), otherwise raise error.
 function search_pkg(pkg::String)
     name,ver=str2spec(pkg)
     found=String[]
@@ -82,8 +83,41 @@ function search_pkg(pkg::String)
     end
 end
 
+#Get detailed information of pkg according to Project.toml and Manifest.toml
+function pkg_info(pkg::AbstractString)
+    path=joinpath(env_path(),pkg)
+    name=uuid=ver=""
+    pinned=false
+    deps=String[]
+
+    try
+        p=Pkg.TOML.parsefile(joinpath(path,"Project.toml"))
+        name,uuid=first(p["deps"])
+    catch
+    end
+
+    if name!=""
+        try
+            m=Pkg.TOML.parsefile(joinpath(path,"Manifest.toml"))[name][1]
+            ver=get(m,"version",ver)
+            deps=get(m,"deps",deps)
+            pinned=get(m,"pinned",pinned)
+        catch
+        end
+    end
+    return (name=name,uuid=uuid,ver=ver,deps=deps,pinned=pinned)
+end
+
 function activate(pkg::AbstractString)
-    Pkg.activate(joinpath(env_path(),pkg))
+    env=env_path()
+    if pkg in readdir(env)
+        Pkg.activate(joinpath(env,pkg))
+    elseif occursin(r"^\.*$|[/\\]",pkg)
+        error("\"$pkg\" is invalid")
+    else
+        @info "New \"$pkg\""
+        Pkg.activate(joinpath(env,pkg))
+    end
 end
 
 """
@@ -140,9 +174,13 @@ macro iso(expr1,expr2="")
         end
     else
         return quote
+            pkg=$(esc(expr1))
+            if !(typeof(pkg)<:AbstractString)
+                error("@iso should not be used with \"$($(string(expr1)))\"")
+            end
             cur_proj=dirname(Pkg.Types.find_project_file())
             try
-                activate($(esc(expr1)))
+                activate(pkg)
                 $(esc(expr2))
             finally
                 Pkg.activate(cur_proj)
@@ -157,7 +195,7 @@ end
 
 Install a package.
 
-If `pkg` is in the "name@ver" form, then add it and pin the version. If want to free it, just use `IsoPkg.rm(name); IsoPkg.add(name)`. Because the `pkg` is in fact just an environment, these operations are quite lightweight. `@iso name pkg"free name"` can also be used to free it. This way is not recommended because the "ver" in package name may not match the real package version after package updating.
+If `pkg` is in the "name@ver" form, then add the specified version and pin it.
 
 # Examples
 
@@ -170,9 +208,19 @@ If `pkg` is in the "name@ver" form, then add it and pin the version. If want to 
 function add(pkg::AbstractString)
     name,ver,spec=str2spec(pkg)
     if search_registry(name)
-        @iso pkg ver=="" ? Pkg.add(spec) : (Pkg.add(spec);Pkg.pin(name))
+        if ver==""
+            @iso name Pkg.add(spec)
+        else
+            pkg=name*"@"*ver
+            @iso pkg begin
+                Pkg.add(spec)
+                if !pkg_info(pkg).pinned
+                    Pkg.pin(spec)
+                end
+            end
+        end
     else
-        @error name * " not found"
+        @error "\"$name\" not found in registry"
     end
     return nothing
 end
@@ -205,26 +253,6 @@ function update(pkg::AbstractString)
     return nothing
 end
 
-#Get detailed information of pkg according to Project.toml and Manifest.toml
-function pkg_info(pkg::AbstractString)
-    path=joinpath(env_path(),pkg)
-    name=uuid=ver=""
-
-    try
-        p=Pkg.TOML.parsefile(joinpath(path,"Project.toml"))
-        name,uuid=first(p["deps"])
-    catch
-    end
-
-    try
-        m=Pkg.TOML.parsefile(joinpath(path,"Manifest.toml"))
-        ver=m[name][1]["version"]
-    catch
-    end
-
-    return (name=name,uuid=uuid,ver=ver)
-end
-
 """
     status()
     status(pkg::AbstractString)
@@ -235,13 +263,17 @@ function status()
     for pkg in readdir(env_path())
         p=pkg_info(pkg)
         u = p.uuid=="" ? ' '^8 : p.uuid[1:8]
-        u = "["*u*"]"
+        u = "[$u]"
         v = p.ver=="" ? "" : "v"*p.ver
-        s=u*" "*pkg
+        pin = p.pinned ? " ⚲" : ""
+        print(u," "); printstyled(pkg,bold=true,color=:light_blue)
+        s=""
         if pkg==p.name
-            s*=" ("*v*")"
+            s*=" ($v$pin)"
         elseif pkg!=p.name*"@"*p.ver
-            s*=" ("*p.name*" - "*v*")"
+            s*=" ($(p.name) - $v$pin)"
+        else
+            s*=pin
         end
         println(s)
     end
@@ -250,6 +282,62 @@ end
 
 function status(pkg::AbstractString)
     @iso search_pkg(pkg).pkg Pkg.status(mode=PKGMODE_MANIFEST)
+    return nothing
+end
+
+"""
+    pin(pkg::AbstractString)
+
+Pin the package version and change its name to match version if possible.
+"""
+function pin(pkg::AbstractString)
+    env=env_path()
+    pkgs=readdir(env)
+    pkg,name,ver,path=search_pkg(pkg)
+    p=pkg_info(pkg)
+    newpkg=p.name*"@"*p.ver
+    if p.ver!=""
+        if p.name==name && p.ver!=ver && !(newpkg in pkgs)
+            p.pinned || @iso pkg Pkg.pin(p.name)
+            mv(path,joinpath(env,newpkg))
+        else
+            if p.pinned
+                println("\"$pkg\" is already pinned")
+            else
+                @iso pkg Pkg.pin(p.name)
+            end
+        end
+    else
+        error("cannot get the version of \"$pkg\"")
+    end
+    return nothing
+end
+
+"""
+    free(pkg::AbstractString)
+
+Free the package version and remove the version in name if possible.
+"""
+function free(pkg::AbstractString)
+    env=env_path()
+    pkgs=readdir(env)
+    pkg,name,ver,path=search_pkg(pkg)
+    p=pkg_info(pkg)
+    newpkg=p.name
+    if p.ver!=""
+        if p.name==name && ver!="" && !(newpkg in pkgs)
+            p.pinned && @iso pkg Pkg.free(p.name)
+            mv(path,joinpath(env,newpkg))
+        else
+            if p.pinned
+                @iso pkg Pkg.free(p.name)
+            else
+                println("\"$pkg\" is already freed")
+            end
+        end
+    else
+        error("cannot get the version of \"$pkg\"")
+    end
     return nothing
 end
 
@@ -264,6 +352,10 @@ function test()
         @iso "Glob1" using Glob #load Glob v1.3.0
         IsoPkg.status() #show status
         IsoPkg.update() #update all packages
+        IsoPkg.pin("Glob1")
+        IsoPkg.free("Glob1")
+        IsoPkg.pin("Glob")
+        IsoPkg.free("Glob@1.2.0")
         IsoPkg.rm("Glob1") #remove Glob v1.3.0
         IsoPkg.switch()
     end
