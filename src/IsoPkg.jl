@@ -24,8 +24,8 @@ end
 Switch the current package group to `group_name`. If not given, switch to the default group name(the Julia version string).
 """
 function switch(group_name::String=DEFAULT_GROUP)
-    if group_name==""
-        error("invalid group name")
+    if group_name=="" || occursin(r"^\.*$|[/\\]",group_name)
+        error("\"$group_name\" is invalid name")
     else 
         GROUP[]=group_name
     end
@@ -113,7 +113,7 @@ function activate(pkg::AbstractString)
     if pkg in readdir(env)
         Pkg.activate(joinpath(env,pkg))
     elseif occursin(r"^\.*$|[/\\]",pkg)
-        error("\"$pkg\" is invalid")
+        error("\"$pkg\" is invalid name")
     else
         @info "New \"$pkg\""
         Pkg.activate(joinpath(env,pkg))
@@ -244,7 +244,11 @@ Upgrade a package or all installed packages.
 """
 function update()
     for pkg in readdir(env_path())
-        @iso pkg Pkg.update()
+        try
+            @iso pkg Pkg.update()
+        catch
+            @info "Update \"$pkg\" error."
+        end
     end
     return nothing
 end
@@ -309,7 +313,7 @@ function pin(pkg::AbstractString)
             end
         end
     else
-        error("cannot get the version of \"$pkg\"")
+        error("Cannot get the version of \"$pkg\"")
     end
     return nothing
 end
@@ -337,7 +341,7 @@ function free(pkg::AbstractString)
             end
         end
     else
-        error("cannot get the version of \"$pkg\"")
+        error("Cannot get the version of \"$pkg\"")
     end
     return nothing
 end
