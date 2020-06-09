@@ -6,7 +6,7 @@ export @iso
 
 const DEFAULT_GROUP=string("v",VERSION.major,".",VERSION.minor)
 
-"""Name of current package group"""
+"""Name of the current package group"""
 const GROUP=Ref(DEFAULT_GROUP)
 
 function env_path()
@@ -21,7 +21,7 @@ end
     switch(group_name::String)
     switch()
 
-Switch the current package group to `group_name` or to the default group name(Julia version).
+Switch the current package group to `group_name`. If not given, switch to the default group name(the Julia version string).
 """
 function switch(group_name::String=DEFAULT_GROUP)
     if group_name==""
@@ -32,7 +32,7 @@ function switch(group_name::String=DEFAULT_GROUP)
     return nothing
 end
 
-#Search if pkg exists in registry
+#Search if pkg exists in the registry
 function search_registry(pkg::AbstractString)
     for registry in Pkg.Types.collect_registries()
         data = Pkg.Types.read_registry(joinpath(registry.path, "Registry.toml"))
@@ -57,7 +57,7 @@ function str2spec(pkg::String)
     return (name=name,ver=ver,spec=p)
 end
 
-#Search if pkg installed. If installed, return (pkg,name,ver,path), otherwise raise error.
+#Search if `pkg` is installed. If installed, return (pkg, name, ver, path), otherwise raise an error.
 function search_pkg(pkg::String)
     name,ver=str2spec(pkg)
     found=String[]
@@ -83,7 +83,7 @@ function search_pkg(pkg::String)
     end
 end
 
-#Get detailed information of pkg according to Project.toml and Manifest.toml
+#Get detailed information about `pkg` according to Project.toml and Manifest.toml
 function pkg_info(pkg::AbstractString)
     path=joinpath(env_path(),pkg)
     name=uuid=ver=""
@@ -123,11 +123,12 @@ end
 """
     @iso(using_or_import_statement)
     @iso(using_or_import_statement, version_string)
+
+Load one package or load a package with the specified version. Currently, it does not support loading multiple packages at once.
+
     @iso(pkg_name, statement)
 
-Load package or run `statement` in the specified package environment.
-
-Currently it does not support multiple package loading.
+Run `statement` in the `pkg_name` environment.
 
 # Examples
 
@@ -195,7 +196,7 @@ end
 
 Install a package.
 
-If `pkg` is in the "name@ver" form, then add the specified version and pin it.
+If `pkg` is in the "name@ver" form, then the specified version will be added and pinned.
 
 # Examples
 
@@ -263,10 +264,10 @@ function status()
     for pkg in readdir(env_path())
         p=pkg_info(pkg)
         u = p.uuid=="" ? ' '^8 : p.uuid[1:8]
-        u = "[$u]"
+        u = "[$u] "
         v = p.ver=="" ? "" : "v"*p.ver
         pin = p.pinned ? " ⚲" : ""
-        print(u," "); printstyled(pkg,bold=true,color=:light_blue)
+        printstyled(u;color=:light_black); printstyled(pkg;color=:light_yellow)
         s=""
         if pkg==p.name
             s*=" ($v$pin)"
