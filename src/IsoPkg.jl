@@ -124,7 +124,17 @@ end
     @iso(using_or_import_statement)
     @iso(using_or_import_statement, version_string)
 
-Load one package or load a package with the specified version. Currently, it does not support loading multiple packages at once.
+Load a package or a package with a specified version. Currently, it does not support loading multiple packages at once.
+
+# Examples
+
+    #Load Glob (after `IsoPkg.add("Glob")`)
+    @iso using Glob
+
+    #Load UnicodePlots v1.2.0 (after `IsoPkg.add("UnicodePlots@1.2.0")`)
+    @iso using UnicodePlots "1.2.0"
+
+-----------------------------------------------
 
     @iso(pkg_name, statement)
 
@@ -132,17 +142,14 @@ Run `statement` in the `pkg_name` environment.
 
 # Examples
 
-    #Load Glob
-    @iso using Glob
+    #Load Glob v1.2.0 (after `IsoPkg.add("Glob@1.2.0")`; equivalent to `@iso using Glob "1.2.0"`
+    @iso "Glob@1.2.0" using Glob
 
-    #Load UnicodePlots v1.2.0 (after IsoPkg.add("UnicodePlots@1.2.0"))
-    @iso using UnicodePlots "1.2.0"
+    #Test Glob
+    @iso "Glob@1.2.0" Pkg.test("Glob")
 
-    #Pin Glob version
-    @iso "Glob" Pkg.pin("Glob")
-
-    #Show Glob status (equivalent to IsoPkg.status("Glob"))
-    @iso "Glob" pkg"status --manifest"
+    #Show Glob status (equivalent to `IsoPkg.status("Glob@1.2.0")`)
+    @iso "Glob@1.2.0" pkg"status --manifest"
 """
 macro iso(expr1,expr2="")
     if typeof(expr1)==Expr && (expr1.head==:import || expr1.head==:using)
@@ -237,22 +244,28 @@ function rm(pkg::AbstractString)
 end
 
 """
-    update()
-    update(pkg::AbstractString)
+    update(;force=false)
 
-Upgrade a package or all installed packages.
+If `force` is true, upgrade all installed packages, otherwise, update the packages which names do not include version.
 """
-function update()
+function update(;force=false)
     for pkg in readdir(env_path())
-        try
-            @iso pkg Pkg.update()
-        catch
-            @info "Update \"$pkg\" error."
+        if force || !('@' in pkg)
+            try
+                @iso pkg Pkg.update()
+            catch
+                @info "Update \"$pkg\" error."
+            end
         end
     end
     return nothing
 end
 
+"""
+    update(pkg::AbstractString)
+
+Upgrade a package
+"""
 function update(pkg::AbstractString)
     @iso search_pkg(pkg).pkg Pkg.update()
     return nothing
@@ -260,9 +273,8 @@ end
 
 """
     status()
-    status(pkg::AbstractString)
 
-Show the status of a package or all installed packages.
+Show the status all installed packages.
 """
 function status()
     for pkg in readdir(env_path())
@@ -285,6 +297,11 @@ function status()
     return nothing
 end
 
+"""
+    status(pkg::AbstractString)
+
+Show the status of a package.
+"""
 function status(pkg::AbstractString)
     @iso search_pkg(pkg).pkg Pkg.status(mode=PKGMODE_MANIFEST)
     return nothing
