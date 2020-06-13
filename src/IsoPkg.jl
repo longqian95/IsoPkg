@@ -246,9 +246,9 @@ end
 """
     update(;force=false)
 
-If `force` is true, upgrade all installed packages, otherwise, update the packages which names do not include version.
+Update the packages. The packages which names include version (such as name@ver) are NOT be updated. It will help the scripts which rely on this kind of packages not break. If really want to update all installed package, set `force` to true (be careful).
 """
-function update(;force=false)
+function update(; force=false)
     for pkg in readdir(env_path())
         if force || !('@' in pkg)
             try
@@ -264,10 +264,12 @@ end
 """
     update(pkg::AbstractString)
 
-Upgrade a package
+Upgrade a package. The packages which names include version (such as name@ver) are NOT be updated except `force` is true.
 """
-function update(pkg::AbstractString)
-    @iso search_pkg(pkg).pkg Pkg.update()
+function update(pkg::AbstractString; force=false)
+    if force || !('@' in pkg)
+        @iso search_pkg(pkg).pkg Pkg.update()
+    end
     return nothing
 end
 
@@ -362,5 +364,37 @@ function free(pkg::AbstractString)
     end
     return nothing
 end
+
+"""
+    show_not_newest_pkgs()
+
+Return the packages which is not the newest version in current environment.
+
+Ref: https://www.juliabloggers.com/understanding-package-version-restrictions-in-julia
+"""
+function show_not_newest_pkgs()
+    cd(joinpath(DEPOT_PATH[1], "registries", "General")) do
+       deps = Pkg.dependencies()
+       registry = Pkg.TOML.parse(read("Registry.toml", String))
+       general_pkgs = registry["packages"]
+
+       constrained = Dict{String, Tuple{VersionNumber,VersionNumber}}()
+       for (uuid, dep) in deps
+           suuid = string(uuid)
+           dep.is_direct_dep || continue
+           dep.version === nothing && continue
+           haskey(general_pkgs, suuid) || continue
+           pkg_meta = general_pkgs[suuid]
+           pkg_path = joinpath(pkg_meta["path"], "Versions.toml")
+           versions = Pkg.TOML.parse(read(pkg_path, String))
+           newest = maximum(VersionNumber.(keys(versions)))
+           if newest > dep.version
+               constrained[dep.name] = (dep.version, newest)
+           end
+       end
+       return constrained
+    end
+end
+
 
 end
