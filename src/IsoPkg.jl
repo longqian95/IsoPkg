@@ -246,7 +246,9 @@ end
 """
     update(;force=false)
 
-Update the packages. The packages which names include version (such as name@ver) are NOT be updated. It will help the scripts which rely on this kind of packages not break. If really want to update all installed package, set `force` to true (be careful).
+Update all packages. The packages which names include version (such as name@ver) will NOT be updated. This will help the scripts which rely on this kind of packages not break.
+
+If really want to update all installed package, set `force` to true. (Be careful)
 """
 function update(; force=false)
     for pkg in readdir(env_path())
@@ -264,7 +266,7 @@ end
 """
     update(pkg::AbstractString)
 
-Upgrade a package. The packages which names include version (such as name@ver) are NOT be updated except `force` is true.
+Upgrade a package. The package which name includes version (such as name@ver) will NOT be updated except `force` is true.
 """
 function update(pkg::AbstractString; force=false)
     if force || !('@' in pkg)

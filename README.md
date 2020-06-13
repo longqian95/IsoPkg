@@ -22,7 +22,7 @@ This package simply creates the `env_isolated_packages` folder in `~/.julia`. Th
 
 # Installation
 
-`]add https://github.com/longqian95/IsoPkg.git`
+`]add IsoPkg`
 
 # Usage
 
