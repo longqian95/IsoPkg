@@ -1,6 +1,8 @@
 module IsoPkg
 
 using Pkg
+using TOML
+using UUIDs
 
 export @iso
 
@@ -32,10 +34,41 @@ function switch(group_name::String=DEFAULT_GROUP)
     return nothing
 end
 
+# This is adapted over from LocalRegistry.jl
+function our_collect_registries()
+    registries = []
+    for depot in Pkg.depots()
+        isdir(depot) || continue
+        reg_dir = joinpath(depot, "registries")
+        isdir(reg_dir) || continue
+        for name in readdir(reg_dir)
+            file = joinpath(reg_dir, name, "Registry.toml")
+            if !isfile(file)
+                # Packed registry in Julia 1.7+.
+                file = joinpath(reg_dir, "$(name).toml")
+            end
+
+            if isfile(file)
+                content =TOML.parsefile(file)
+
+                spec = (
+                    name = content["name"]::String,
+                    uuid = UUID(content["uuid"]::String),
+                    url = get(content, "repo", nothing)::Union{String,Nothing},
+                    path = file
+                )
+
+                push!(registries, spec)
+            end
+        end
+    end
+    return registries
+end
+
 #Search if pkg exists in the registry
 function search_registry(pkg::AbstractString)
-    for registry in Pkg.Types.collect_registries()
-        data = Pkg.Types.read_registry(joinpath(registry.path, "Registry.toml"))
+    for registry in our_collect_registries()
+        data=TOML.parsefile(registry.path)
         for (_uuid, pkgdata) in data["packages"]
             if pkg==pkgdata["name"]
                 return true
@@ -44,6 +77,19 @@ function search_registry(pkg::AbstractString)
     end
     return false
 end
+
+# #Search if pkg exists in the registry
+# function search_registry(pkg::AbstractString)
+#     for registry in Pkg.Types.collect_registries()
+#         data = Pkg.Types.read_registry(joinpath(registry.path, "Registry.toml"))
+#         for (_uuid, pkgdata) in data["packages"]
+#             if pkg==pkgdata["name"]
+#                 return true
+#             end
+#         end
+#     end
+#     return false
+# end
 
 function str2spec(pkg::String)
     if '@' in pkg
