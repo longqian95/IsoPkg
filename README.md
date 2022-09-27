@@ -14,7 +14,7 @@ With `IsoPkg`, simplely `using IsoPkg; IsoPkg.add("UnicodePlots@1.2.0"); IsoPkg.
 
 ## Implementation detail:
 
-This package simply creates the `env_isolated_packages` folder in `~/.julia`. Then creates a folder (default is Julia version) for grouping the packages. Installing package will create an isolated environment in the activated group folder. Before operating or loading a package, the corresponding environment will be activated automatically. The whole process is quite lightweight. You can even manually manage the folders in `~/.julia/env_isolated_packages` to manage the installed packages.
+This package simply creates the `env_isolated_packages` folder in `~/.julia`. Then creates a folder for grouping the packages. The folder name is called package group. The default group name is the current Julia version. Using `IsoPkg.switch_group(group_name)` to select the group name. Installing package will create an isolated environment in the folder with the activated group name. Before operating or loading a package, the corresponding environment will be activated automatically. The whole process is quite lightweight. You can even manually manage the folders in `~/.julia/env_isolated_packages` to manage the installed packages, such as deleting a group folder to remove the package group.
 
 <!-- reference -->
 [1]: https://www.juliabloggers.com/understanding-package-version-restrictions-in-julia/
@@ -36,16 +36,15 @@ This package simply creates the `env_isolated_packages` folder in `~/.julia`. Th
 - operate in a package environment: `@iso pkg_name statement`
 - using/import package: `@iso using/import pkg_name`
 - using/import package with the specified version: `@iso using/import pkg_name version`
-- switch package group: `IsoPkg.swith(group_name)`
 - pin the package version: `IsoPkg.pin(pkg_name)`
-- free the package version: `IsoPkg.pin(pkg_name)`
+- free the package version: `IsoPkg.free(pkg_name)`
+- switch package group: `IsoPkg.swith_group(group_name)`
+- list package group: `IsoPkg.list_group()`
 
 # Examples
 
 ```julia
 using IsoPkg
-
-IsoPkg.switch("test") #Switch the current project group to "test". Assume it is empty.
 
 IsoPkg.add("Glob") #Install Glob
 IsoPkg.add("Glob@1.2.0") #Install Glob v1.2.0 and pin the version

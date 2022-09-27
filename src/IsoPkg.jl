@@ -20,12 +20,12 @@ function env_path()
 end
 
 """
-    switch(group_name::String)
-    switch()
+    switch_group(group_name::String)
+    switch_group()
 
-Switch the current package group to `group_name`. If not given, switch to the default group name(the Julia version string).
+Switch the current package group to `group_name`. If not given, switch to the default group name, which is just current Julia version string such as "v1.2". Switching to a new group name will create the group.
 """
-function switch(group_name::String=DEFAULT_GROUP)
+function switch_group(group_name::String=DEFAULT_GROUP)
     if group_name=="" || occursin(r"^\.*$|[/\\]",group_name)
         error("\"$group_name\" is invalid name")
     else 
@@ -34,7 +34,51 @@ function switch(group_name::String=DEFAULT_GROUP)
     return nothing
 end
 
+"""
+    list_group(;detail=false)
+
+List all available package groups with "group_name (number_of_packages)" form. If `detail` is true, also list the packages in each group.
+"""
+function list_group(;detail=false)
+    ep=dirname(env_path())
+    cur_group=GROUP[]
+    groups=filter(!=(cur_group),readdir(ep))
+
+    println("Available groups:")
+    for g in groups
+        pkgs=readdir(joinpath(ep,g))
+        n=length(pkgs)
+        if n>0
+            print("  ")
+            printstyled(g;color=:light_yellow)
+            println(" ($n)")
+            if detail
+                for p in pkgs
+                    printstyled("    "*p;color=:light_black)
+                    println()
+                end
+            end
+        end
+    end
+
+    println()
+    println("Current group:")
+    pkgs=readdir(joinpath(ep,cur_group))
+    n=length(pkgs)
+    print("  ")
+    printstyled(cur_group;color=:light_yellow)
+    println(" ($n)")
+    if detail
+        for p in pkgs
+            printstyled("    "*p;color=:light_black)
+            println()
+        end
+    end
+end
+
+
 # This is adapted over from LocalRegistry.jl
+# It does not work if there is only General.tar.gz in registries
 function our_collect_registries()
     registries = []
     for depot in Pkg.depots()
@@ -47,17 +91,14 @@ function our_collect_registries()
                 # Packed registry in Julia 1.7+.
                 file = joinpath(reg_dir, "$(name).toml")
             end
-
             if isfile(file)
                 content =TOML.parsefile(file)
-
                 spec = (
                     name = content["name"]::String,
                     uuid = UUID(content["uuid"]::String),
                     url = get(content, "repo", nothing)::Union{String,Nothing},
                     path = file
                 )
-
                 push!(registries, spec)
             end
         end
@@ -121,11 +162,11 @@ function search_pkg(pkg::String)
     elseif length(found)>1
         error("Found multiple packages: $found. Please specify an exact name.")
     else
-        if search_registry(name)
+        #if search_registry(name)
             error("\"$pkg\" is not installed. Use IsoPkg.add(\"$pkg\") to install it.")
-        else
-            error("\"$name\" is invalid (not found in registry).")
-        end 
+        #else
+        #    error("\"$name\" is invalid (not found in registry).")
+        #end 
     end
 end
 
@@ -144,7 +185,12 @@ function pkg_info(pkg::AbstractString)
 
     if name!=""
         try
-            m=Pkg.TOML.parsefile(joinpath(path,"Manifest.toml"))[name][1]
+            p=Pkg.TOML.parsefile(joinpath(path,"Manifest.toml"))
+            if "deps" in keys(p)
+                m=p["deps"][name][1]
+            else
+                m=p[name][1]
+            end
             ver=get(m,"version",ver)
             deps=get(m,"deps",deps)
             pinned=get(m,"pinned",pinned)
@@ -261,7 +307,7 @@ If `pkg` is in the "name@ver" form, then the specified version will be added and
 """
 function add(pkg::AbstractString)
     name,ver,spec=str2spec(pkg)
-    if search_registry(name)
+    #if search_registry(name)
         if ver==""
             @iso name Pkg.add(spec)
         else
@@ -273,9 +319,9 @@ function add(pkg::AbstractString)
                 end
             end
         end
-    else
-        @error "\"$name\" not found in registry"
-    end
+    #else
+    #    @error "\"$name\" not found in registry"
+    #end
     return nothing
 end
 
